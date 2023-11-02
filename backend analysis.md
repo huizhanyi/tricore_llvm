@@ -100,3 +100,9 @@ Machine Branch Probability Analysis
       Machine Natural Loop Construction
       TriCore Assembly Printer
 ```
+对于TriCore DAG->DAG Pattern Instruction Selection遍，在哪里生成的呢？搜索字符串发现是在文件TriCoreISelDAGToDAG.cpp的TriCoreDAGToDAGISel类中完成打印，而这个类定义如下
+```
+class TriCoreDAGToDAGISel : public SelectionDAGISel
+```
+这里跟踪一下可以看出SelectionDAGISel继承了MachineFunctionPass，进一步继承自FunctionPass。因此TriCoreDAGToDAGISel本身就是一个遍结构类。
+
