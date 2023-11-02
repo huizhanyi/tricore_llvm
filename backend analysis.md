@@ -142,3 +142,12 @@ extern "C" void LLVMInitializeTriCoreTarget() {
   RegisterTargetMachine<TriCoreTargetMachine> X(TheTriCoreTarget);
 }
 ```
+另外一个PASS是TriCoreAsmPrinter
+```
+class TriCoreAsmPrinter : public AsmPrinter {
+```
+```
+class AsmPrinter : public MachineFunctionPass {
+```
+可以看出这也是一个Pass。
+其他PASS的定义不在TriCore目标的定义中，由外部定义，大部分在lib/CodeGen目录。
