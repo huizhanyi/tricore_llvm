@@ -105,4 +105,40 @@ Machine Branch Probability Analysis
 class TriCoreDAGToDAGISel : public SelectionDAGISel
 ```
 这里跟踪一下可以看出SelectionDAGISel继承了MachineFunctionPass，进一步继承自FunctionPass。因此TriCoreDAGToDAGISel本身就是一个遍结构类。
+文件结束生成了这个类（遍）
+```
+FunctionPass *llvm::createTriCoreISelDag(TriCoreTargetMachine &TM,
+                CodeGenOpt::Level OptLevel) {
+        return new TriCoreDAGToDAGISel(TM, OptLevel);
+}
+```
+createTriCoreISelDag函数在TriCoreTargetMachine.cpp
+```
+89 bool TriCorePassConfig::addInstSelector() {
+90   addPass(createTriCoreISelDag(getTriCoreTargetMachine(), getOptLevel()));
+91   return false;
+92 }
+```
+TriCorePassConfig定义如下
+```
+68 class TriCorePassConfig : public TargetPassConfig {
+```
+TargetPassConfig本身继承自ImmutablePass（继承自ModulePass）
+```
+class TargetPassConfig : public ImmutablePass {
+```
+所以TriCorePassConfig是一个ModulePass
 
+TriCoreTargetMachine定义的createPassConfig函数会生成一个TriCorePassConfig对象
+```
+class TriCoreTargetMachine : public LLVMTargetMachine
+  /// Pass Pipeline Configuration
+  virtual TargetPassConfig *createPassConfig(legacy::PassManagerBase &PM) override;
+```
+而TriCoreTargetMachine在下面的代码中完成注册。
+```
+// Force static initialization.
+extern "C" void LLVMInitializeTriCoreTarget() {
+  RegisterTargetMachine<TriCoreTargetMachine> X(TheTriCoreTarget);
+}
+```
