@@ -177,3 +177,31 @@ extern "C" void LLVMInitializeTriCoreTarget() {
   RegisterTargetMachine<TriCoreTargetMachine> X(TheTriCoreTarget);
 }
 ```
+代码里找不到哪里调用了LLVMInitializeTriCoreTarget，调试llc分析一下。
+```
+Breakpoint 1, LLVMInitializeTriCoreTarget () at /home/yhz/tricore_llvm/llvm-3.7.0.src/lib/Target/TriCore/TriCoreTargetMachine.cpp:97
+97      extern "C" void LLVMInitializeTriCoreTarget() {
+(gdb) bt
+#0  LLVMInitializeTriCoreTarget () at /home/yhz/tricore_llvm/llvm-3.7.0.src/lib/Target/TriCore/TriCoreTargetMachine.cpp:97
+#1  0x0000555555f02652 in llvm::InitializeAllTargets () at /home/yhz/tricore_llvm/build/include/llvm/Config/Targets.def:35
+#2  0x0000555555efd252 in main (argc=8, argv=0x7fffffffe1e8) at /home/yhz/tricore_llvm/llvm-3.7.0.src/tools/llc/llc.cpp:182
+```
+InitializeAllTargets() -> LLVMInitializeTriCoreTarget
+llvm/Support/TargetSelect.h
+```
+63   inline void InitializeAllTargets() {
+64     // FIXME: Remove this, clients should do it.
+这里先调用后端的LLVMInitializeTriCoreTargetInfo
+65     InitializeAllTargetInfos();
+66
+看这里，会调用所有后端的LLVMInitialize函数,包括LLVMInitializeTriCoreTarget。
+67 #define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##Target();
+68 #include "llvm/Config/Targets.def"
+69   }
+```
+这里LLVMInitializeTriCoreTargetInfo定义为
+```
+extern "C" void LLVMInitializeTriCoreTargetInfo() {
+  RegisterTarget<Triple::tricore> X(TheTriCoreTarget, "tricore", "TriCore");
+}
+```
