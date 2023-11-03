@@ -152,3 +152,28 @@ class AsmPrinter : public MachineFunctionPass {
 可以看出这也是一个Pass。
 其他PASS的定义不在TriCore目标的定义中，由外部定义，大部分在lib/CodeGen目录。
 ### TriCoreTargetMachine
+```
+32 class TriCoreTargetMachine : public LLVMTargetMachine {
+```
+继承自LLVMTargetMachine基类。定义在include/llvm/Target/TargetMachine.h
+```
+245 class LLVMTargetMachine : public TargetMachine {
+生成遍配置，生成代码生成流水线。虚函数，可以在基类重新定义。
+262   virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
+```
+```
+33   TriCoreSubtarget Subtarget;
+这里TriCoreSubtarget继承自TargetSubtargetInfo。
+45   virtual const TargetSubtargetInfo *
+46   getSubtargetImpl(const Function &) const override {
+47     return &Subtarget;
+48   }
+```
+
+TriCoreTargetMachine.cpp
+```
+// Force static initialization.
+extern "C" void LLVMInitializeTriCoreTarget() {
+  RegisterTargetMachine<TriCoreTargetMachine> X(TheTriCoreTarget);
+}
+```
