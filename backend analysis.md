@@ -177,6 +177,24 @@ extern "C" void LLVMInitializeTriCoreTarget() {
   RegisterTargetMachine<TriCoreTargetMachine> X(TheTriCoreTarget);
 }
 ```
+这里用TriCoreTargetMachine实例化函数Allocator，然后，将Allocator登记给TheTriCoreTarget
+```
+template <class TargetMachineImpl> struct RegisterTargetMachine {
+  RegisterTargetMachine(Target &T) {
+    TargetRegistry::RegisterTargetMachine(T, &Allocator);
+  }
+
+private:
+  static TargetMachine *Allocator(const Target &T, const Triple &TT,
+                                  StringRef CPU, StringRef FS,
+                                  const TargetOptions &Options, Reloc::Model RM,
+                                  CodeModel::Model CM, CodeGenOpt::Level OL) {
+    return new TargetMachineImpl(T, TT, CPU, FS, Options, RM, CM, OL);
+  }
+};
+```
+这里通过调用Allocator生成TargetMachine,即TriCoreTargetMachine。
+
 代码里找不到哪里调用了LLVMInitializeTriCoreTarget，调试llc分析一下。
 ```
 Breakpoint 1, LLVMInitializeTriCoreTarget () at /home/yhz/tricore_llvm/llvm-3.7.0.src/lib/Target/TriCore/TriCoreTargetMachine.cpp:97
@@ -205,3 +223,19 @@ extern "C" void LLVMInitializeTriCoreTargetInfo() {
   RegisterTarget<Triple::tricore> X(TheTriCoreTarget, "tricore", "TriCore");
 }
 ```
+Triple::tricore是外部增加的一个枚举类型。
+```
+868 template <Triple::ArchType TargetArchType = Triple::UnknownArch,
+869           bool HasJIT = false>
+870 struct RegisterTarget {
+871   RegisterTarget(Target &T, const char *Name, const char *Desc) {
+872     TargetRegistry::RegisterTarget(T, Name, Desc, &getArchMatch, HasJIT);
+873   }
+874
+875   static bool getArchMatch(Triple::ArchType Arch) {
+876     return Arch == TargetArchType;
+877   }
+878 };
+```
+这里实际调用TargetRegistry::RegisterTarget函数，登记了TheTriCoreTarget目标。
+TheTriCoreTarget是一个全局变量，没有特别初始化。TargetRegistry::RegisterTarget函数将对应对象进行初始化，增加名字、描述等信息。
