@@ -239,3 +239,71 @@ Triple::tricore是外部增加的一个枚举类型。
 ```
 这里实际调用TargetRegistry::RegisterTarget函数，登记了TheTriCoreTarget目标。
 TheTriCoreTarget是一个全局变量，没有特别初始化。TargetRegistry::RegisterTarget函数将对应对象进行初始化，增加名字、描述等信息。
+#### Subtarget信息
+实际上很多信息TriCoreTargetMachine是通过Subtarget包含的，而不是直接定义在TargetMachine中。也就是字段
+```
+TriCoreSubtarget Subtarget;
+```
+检查了几个后端，都是这样的。
+```
+class TriCoreSubtarget : public TriCoreGenSubtargetInfo {
+  virtual void anchor();
+
+private:
+  const DataLayout DL;       // Calculates type size & alignment.
+  TriCoreInstrInfo InstrInfo;
+  TriCoreTargetLowering TLInfo;
+  TriCoreSelectionDAGInfo TSInfo;
+  TriCoreFrameLowering FrameLowering;
+  InstrItineraryData InstrItins;
+
+  // UseSmallSection - Small section is used.
+        bool UseSmallSection;
+
+public:
+  /// This constructor initializes the data members to match that
+  /// of the specified triple.
+  ///
+  TriCoreSubtarget(const Triple &TT, StringRef CPU,
+               StringRef FS, TriCoreTargetMachine &TM);
+```
+```
+TriCoreSubtarget::TriCoreSubtarget(const Triple &TT, StringRef CPU, StringRef FS,
+                           TriCoreTargetMachine &TM)
+    : TriCoreGenSubtargetInfo(TT, CPU, FS),
+      DL("e-m:e-p:32:32-i64:32-a:0:32-n32"),
+      InstrInfo(), TLInfo(TM), TSInfo(), FrameLowering() {
+
+         UseSmallSection = UseSmallSectionOpt;
+
+}
+```
+SubTarget的初始化调用在TargetMachine的构造函数中
+```
+TriCoreTargetMachine::TriCoreTargetMachine(const Target &T, const Triple &TT,
+                                   StringRef CPU, StringRef FS,
+                                   const TargetOptions &Options,
+                                   Reloc::Model RM, CodeModel::Model CM,
+                                   CodeGenOpt::Level OL)
+    : LLVMTargetMachine(T,
+      computeDataLayout(TT, CPU, Options),
+      TT, CPU, FS,
+      Options, RM, CM, OL),
+      Subtarget(TT, CPU, FS, *this),
+      TLOF(make_unique<TargetLoweringObjectFileELF>()) {
+  initAsmInfo();
+}
+```
+TriCoreSubtarget初始化时，对内部数据的构造器进行了调用。例如
+```
+DL("e-m:e-p:32:32-i64:32-a:0:32-n32"), InstrInfo(), TLInfo(TM), TSInfo(), FrameLowering() 
+```
+相关定义如下
+```
+const DataLayout DL;       // Calculates type size & alignment.
+TriCoreInstrInfo InstrInfo;
+TriCoreTargetLowering TLInfo;
+TriCoreSelectionDAGInfo TSInfo;
+TriCoreFrameLowering FrameLowering;
+InstrItineraryData InstrItins;
+```
