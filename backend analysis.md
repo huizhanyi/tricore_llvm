@@ -307,3 +307,128 @@ TriCoreSelectionDAGInfo TSInfo;
 TriCoreFrameLowering FrameLowering;
 InstrItineraryData InstrItins;
 ```
+#### 寄存器（Register）信息
+TriCoreRegisterInfo.td定义了系统的寄存器信息。
+TriCoreRegisterInfo.h/cpp定义了一起其他寄存器信息。
+```
+44 const uint16_t *
+45 TriCoreRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+46   static const uint16_t CalleeSavedRegs[] =
+47   { 0 };
+48   return CalleeSavedRegs;
+49 }
+```
+这里继承的虚函数返回CalleeSavedRegister信息，对于CalleeSavedRegister，Caller可以假定这些寄存器的信息经过函数调用后，值会被保留。
+TriCore的upper上下文的寄存器调用函数前自动会被保留，调用完毕会自动恢复。因此这里认为不需要处理CalleeSavedRegister。
+但是这里TriCore的处理有些矛盾，按照这里的说法，upper上下文的寄存器是CalleeSaved的寄存器。但是后面的函数getCallPreservedMask大部分是lower上下文的寄存器，是通过TriCoreCallingconv.td文件中的CC_SAVE定义的。这两个函数表示的内存似乎是重合的？检查对这两个函数的定义
+llvm/Target/TargetRegisterInfo.h
+```
+/// getCalleeSavedRegs - Return a null-terminated list of all of the
+/// callee saved registers on this target. The register should be in the
+/// order of desired callee-save stack frame offset. The first register is
+/// closest to the incoming stack pointer if stack grows down, and vice versa.
+///
+virtual const MCPhysReg*
+getCalleeSavedRegs(const MachineFunction *MF) const = 0;
+
+/// getCallPreservedMask - Return a mask of call-preserved registers for the
+/// given calling convention on the current function.  The mask should
+/// include all call-preserved aliases.  This is used by the register
+/// allocator to determine which registers can be live across a call.
+///
+/// The mask is an array containing (TRI::getNumRegs()+31)/32 entries.
+/// A set bit indicates that all bits of the corresponding register are
+/// preserved across the function call.  The bit mask is expected to be
+/// sub-register complete, i.e. if A is preserved, so are all its
+/// sub-registers.
+///
+/// Bits are numbered from the LSB, so the bit for physical register Reg can
+/// be found as (Mask[Reg / 32] >> Reg % 32) & 1.
+///
+/// A NULL pointer means that no register mask will be used, and call
+/// instructions should use implicit-def operands to indicate call clobbered
+/// registers.
+///
+virtual const uint32_t *getCallPreservedMask(const MachineFunction &MF,
+                                             CallingConv::ID) const {
+/// getReservedRegs - Returns a bitset indexed by physical register number
+/// indicating if a register is a special register that has particular uses
+/// and should be considered unavailable at all times, e.g. SP, RA. This is
+/// used by register scavenger to determine what registers are free.
+virtual BitVector getReservedRegs(const MachineFunction &MF) const = 0;
+```
+根据上述两个函数的注释，感觉calleesavedregister和call-preserved register含义有重叠。但是按照TriCore的实现，则完全不相交。
+其他有些后端没有定义函数getCallPreservedMask。
+getReservedRegs函数处理特殊寄存器，有特殊用途。
+
+##### Frame寄存器
+TriCoreRegisterInfo.cpp
+```
+146 unsigned TriCoreRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
+151          const TriCoreFrameLowering *TFI = getFrameLowering(MF);
+152           return TFI->hasFP(MF) ? TriCore::A14 : TriCore::A10;
+155 }
+```
+这里的getFrameLowering函数定义在TriCoreGenRegisterInfo.inc
+```
+const TriCoreFrameLowering *TriCoreGenRegisterInfo::
+    getFrameLowering(const MachineFunction &MF) {
+  return static_cast<const TriCoreFrameLowering *>(
+      MF.getSubtarget().getFrameLowering());
+}
+```
+实际上最终调用了TriCoreSubtarget的getFrameLowering函数，返回其中保存的TriCoreFrameLowering FrameLowering数据结构。
+根据hasFP的返回情况，确定返回A14还是A10。A10是栈指针，如果没有专门的帧指针，直接返回栈指针，计算相对栈指针的地址。
+```
+```
+
+```
+ 89 void TriCoreRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
+ 90                 int SPAdj, unsigned FIOperandNum, RegScavenger *RS) const {
+ 91         MachineInstr &MI = *II;
+ 92         const MachineFunction &MF = *MI.getParent()->getParent();
+ 93         DebugLoc dl = MI.getDebugLoc();
+ 94         MachineBasicBlock &MBB = *MI.getParent();
+ 95         const MachineFrameInfo *MFI = MF.getFrameInfo();
+ 96         MachineOperand &FIOp = MI.getOperand(FIOperandNum);
+ 97         unsigned FI = FIOp.getIndex();
+ 98         const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+ 99         unsigned BasePtr = (TFI->hasFP(MF) ? TriCore::A14 : TriCore::A10);
+100         // Determine if we can eliminate the index from this kind of instruction.
+101         unsigned ImmOpIdx = 0;
+103
+104         if (MI.getOpcode() == TriCore::ADDrc) {
+106                 int Offset = MFI->getObjectOffset(FI);
+109                 Offset = -Offset;
+112                 const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+113                 MI.setDesc(TII.get(TriCore::MOVDrr));
+114                 MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
+115
+116                 if (Offset == 0)
+117                         return;
+118
+119                 // We need to materialize the offset via add instruction.
+120                 unsigned DstReg = MI.getOperand(0).getReg();
+121                 if (Offset < 0) {
+122                         BuildMI(MBB, std::next(II), dl, TII.get(TriCore::ADDrc), DstReg).addReg(
+123                                         DstReg).addImm(Offset);
+124                 } else
+125                         BuildMI(MBB, std::next(II), dl, TII.get(TriCore::ADDrc), DstReg).addReg(
+126                                         DstReg).addImm(-Offset);
+127
+128                 return;
+129         }
+130
+132         ImmOpIdx = FIOperandNum + 1;
+133
+134         // FIXME: check the size of offset.
+135         MachineOperand &ImmOp = MI.getOperand(ImmOpIdx);
+139         int Offset = MFI->getObjectOffset(FI);
+141         FIOp.ChangeToRegister(BasePtr, false);
+142         ImmOp.setImm(Offset);
+143 }
+```
+将指令由帧索引改为基址+offset访问。
+
+
+
