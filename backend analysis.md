@@ -379,9 +379,8 @@ const TriCoreFrameLowering *TriCoreGenRegisterInfo::
 ```
 实际上最终调用了TriCoreSubtarget的getFrameLowering函数，返回其中保存的TriCoreFrameLowering FrameLowering数据结构。
 根据hasFP的返回情况，确定返回A14还是A10。A10是栈指针，如果没有专门的帧指针，直接返回栈指针，计算相对栈指针的地址。
-```
-```
 
+下面的函数被PrologEpilogInserter遍调用
 ```
  89 void TriCoreRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
  90                 int SPAdj, unsigned FIOperandNum, RegScavenger *RS) const {
@@ -429,6 +428,30 @@ const TriCoreFrameLowering *TriCoreGenRegisterInfo::
 143 }
 ```
 将指令由帧索引改为基址+offset访问。
+
+TriCoreFrameLowering.h
+```
+class TriCoreFrameLowering : public TargetFrameLowering
+  void emitPrologue(MachineFunction &MF,
+                    MachineBasicBlock &MBB) const override;
+
+  void emitEpilogue(MachineFunction &MF,
+                              MachineBasicBlock &MBB) const override;
+
+  void eliminateCallFramePseudoInstr(MachineFunction &MF,
+                                     MachineBasicBlock &MBB,
+                                     MachineBasicBlock::iterator I)
+                                     const override;
+
+  bool hasFP(const MachineFunction &MF) const;
+
+  //! Stack slot size (4 bytes)
+  static int stackSlotSize() { return 8; }
+```
+```
+void TriCoreFrameLowering::emitPrologue(MachineFunction &MF,
+                                    MachineBasicBlock &MBB) const {
+```
 
 
 
