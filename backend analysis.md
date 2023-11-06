@@ -359,6 +359,19 @@ virtual BitVector getReservedRegs(const MachineFunction &MF) const = 0;
 ```
 根据上述两个函数的注释，感觉calleesavedregister和call-preserved register含义有重叠。但是按照TriCore的实现，则完全不相交。
 其他有些后端没有定义函数getCallPreservedMask。
+```
+ 53 const MCPhysReg *
+ 54 Cpu0RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+ 55   return CSR_O32_SaveList;
+ 56 }
+ 57
+ 58 const uint32_t *
+ 59 Cpu0RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+ 60                                        CallingConv::ID) const {
+ 61   return CSR_O32_RegMask;
+ 62 }
+```
+Cpu0后端这两个函数的定义是一致的。因此这里假定TriCore calleesavedregister为upper context的寄存器，不需要单独处理。则函数getCallPreservedMask的定义是错误的。
 getReservedRegs函数处理特殊寄存器，有特殊用途。
 
 ##### Frame寄存器
