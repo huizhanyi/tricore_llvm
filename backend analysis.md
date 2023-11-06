@@ -452,6 +452,53 @@ class TriCoreFrameLowering : public TargetFrameLowering
 void TriCoreFrameLowering::emitPrologue(MachineFunction &MF,
                                     MachineBasicBlock &MBB) const {
 ```
+```
+计算栈的大小
+101   uint64_t StackSize = computeStackSize(MF);
+如果栈大小为0，不需要发射指令。
+102   if (!StackSize) {
+103     return;
+104   }
+如果有frame pointer
+106   if (hasFP(MF)) {
+107         MachineFunction::iterator I;
+增加A10到A14的mov指令，作为Frame Pointer
+108         BuildMI(MBB, MBBI, dl, TII.get(TriCore::MOVAAsrr), TriCore::A14)
+109                                 .addReg(TriCore::A10);
+110
+标记每个块入口FP都Live，entry则非Live
+111         // Mark the FramePtr as live-in in every block except the entry
+112            for (I = std::next(MF.begin());      I != MF.end(); ++I)
+113                  I->addLiveIn(TriCore::A14);
+114   }
+
+116   // Adjust the stack pointer.
+117   unsigned StackReg = TriCore::A10;
+下面的函数如果stacksize能够用立即数表示，则使用SUBAsc指令调整栈指针，否则使用TriCore::SUBArr。
+118   unsigned OffsetReg = materializeOffset(MF, MBB, MBBI, (unsigned)StackSize);
+119   if (OffsetReg) {
+120     BuildMI(MBB, MBBI, dl, TII.get(TriCore::SUBArr), StackReg)
+121         .addReg(StackReg)
+122         .addReg(OffsetReg)
+123         .setMIFlag(MachineInstr::FrameSetup);
+124   } else {
+125     BuildMI(MBB, MBBI, dl, TII.get(TriCore::SUBAsc))
+126         .addImm(StackSize)
+127         .setMIFlag(MachineInstr::FrameSetup);
+128   }
+```
+这里每种指令的操作数和指令的定义关系如下
+```
+这里sub.a指令的输入是8位常量，隐含的另外一个输入是A10寄存器；没有输出，隐含为A10。仔细看这里的ins和outs。这是一个16位表示指令。这条指令没有pattern，应该不用于指令匹配。汇编指令形式sub.a sp, #126
+let Defs = [A10], Uses = [A10] in
+def SUBAsc : SC<0x20, (outs), (ins u8imm:$const8), "sub.a %a10, $const8", []>;
+
+这里的sub.a指令输入为s1/s2，输出为d。是一个32位指令。汇编指令形式sub.a a3, a4, a2
+def SUBArr : RR<0x01, 0x02, (outs AddrRegs:$d),
+                (ins AddrRegs:$s1, AddrRegs:$s2), "sub.a $d, $s1, $s2",
+                [(set AddrRegs:$d, (sub AddrRegs:$s1, AddrRegs:$s2) )]>;
+```
+这里在Prologue没有进行任何寄存器保存操作，相当于把upper context作为callee-saved寄存器，由硬件自动保存。那么前面的函数getCallPreservedMask实现似乎存在问题。
 
 
 
