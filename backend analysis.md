@@ -500,5 +500,25 @@ def SUBArr : RR<0x01, 0x02, (outs AddrRegs:$d),
 ```
 这里在Prologue没有进行任何寄存器保存操作，相当于把upper context作为callee-saved寄存器，由硬件自动保存。那么前面的函数getCallPreservedMask实现似乎存在问题。
 
+```
+132 void TriCoreFrameLowering::emitEpilogue(MachineFunction &MF,
+133                             MachineBasicBlock &MBB) const {}
+```
+a10 a11 a14都位于upper context，通过ret指令都会自动恢复，Epilogue为空函数，不需要任何操作。
+```
+135 // This function eliminates ADJCALLSTACKDOWN, ADJCALLSTACKUP pseudo
+136 // instructions
+137 void TriCoreFrameLowering::eliminateCallFramePseudoInstr(
+138     MachineFunction &MF, MachineBasicBlock &MBB,
+139     MachineBasicBlock::iterator I) const {
+140   if (I->getOpcode() == TriCore::ADJCALLSTACKUP ||
+141       I->getOpcode() == TriCore::ADJCALLSTACKDOWN) {
+142     MBB.erase(I);
+143   }
+144   return;
+145 }
+```
+这里采用直接删除对应ADJCALLSTACKDOWN, ADJCALLSTACKUP伪指令的操作。
+
 
 
