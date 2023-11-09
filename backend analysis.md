@@ -596,4 +596,12 @@ SelectionDAG/SelectionDAGDumper.cpp
 33 std::string SDNode::getOperationName(const SelectionDAG *G)
 ```
 这里函数包括了ISD::枚举类型对应的dump名称
+#### EntryToken类型
+入口节点的类型。
+```
+t0: ch = EntryToken
+```
+这里的ch代表chain类型（MVT::Other）输出。
+![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/17a1fdac-c1f9-4a8a-9a0a-e2f9ca38563c)
+
 
