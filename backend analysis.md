@@ -605,5 +605,16 @@ t0: ch = EntryToken
 
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/17a1fdac-c1f9-4a8a-9a0a-e2f9ca38563c)
 这里图形表示中包括了节点的id类型EntryToken，唯一id号和chain输出类型。
+#### Constant类型
+页节点类型，表示一个常数，例如
+
+![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/45111af4-84fe-4258-be27-622d6ee95c53)
+输出一个常数4
+
+#### FrameIndex类型
+代表一个帧索引，例如
+
+![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/71cee821-0bd3-4587-b1cf-272087a7d7e8)
+这里代表帧索引为0，输出i32类型，似乎是一个地址。
 
 
