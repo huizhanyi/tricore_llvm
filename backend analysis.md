@@ -602,6 +602,8 @@ SelectionDAG/SelectionDAGDumper.cpp
 t0: ch = EntryToken
 ```
 这里的ch代表chain类型（MVT::Other）输出。
+
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/17a1fdac-c1f9-4a8a-9a0a-e2f9ca38563c)
+这里图形表示中包括了节点的id类型EntryToken，唯一id号和chain输出类型。
 
 
