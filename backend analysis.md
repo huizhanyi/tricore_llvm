@@ -617,4 +617,3 @@ t0: ch = EntryToken
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/71cee821-0bd3-4587-b1cf-272087a7d7e8)
 这里代表帧索引为0，输出i32类型，似乎是一个地址。
 
-
