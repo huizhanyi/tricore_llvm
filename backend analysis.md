@@ -534,5 +534,66 @@ a10 a11 a14都位于upper context，通过ret指令都会自动恢复，Epilogue
 这里采用直接删除对应ADJCALLSTACKDOWN, ADJCALLSTACKUP伪指令的操作。
 
 ### DAG Lowering
+TriCoreISelLowering.h/cpp
+SelectionDAGNodes.h
+```
+327 /// Represents one node in the SelectionDAG.
+328 ///
+329 class SDNode : public FoldingSetNode, public ilist_node<SDNode> {
+330 private:
+代表操作码
+331   /// The operation that this node performs.
+332   int16_t NodeType;
+...
+348 private:
+349   /// Unique id per SDNode in the DAG.
+350   int NodeId;
+351
+352   /// The values that are used by this operation.
+353   SDUse *OperandList;
+354
+355   /// The types of the values this node defines.  SDNode's may
+356   /// define multiple values simultaneously.
+357   const EVT *ValueList;
+358
+359   /// List of uses for this SDNode.
+360   SDUse *UseList;
+```
+ISDOpcodes.h
+包含了目标无关的SelectionDAG的类型
+```
+/// ISD namespace - This namespace contains an enum which represents all of the
+/// SelectionDAG node types and value types.
+///
+namespace ISD {
 
+  //===--------------------------------------------------------------------===//
+  /// ISD::NodeType enum - This enum defines the target-independent operators
+  /// for a SelectionDAG.
+  ///
+  /// Targets may also define target-dependent operator codes for SDNodes. For
+  /// example, on x86, these are the enum values in the X86ISD namespace.
+  /// Targets should aim to use target-independent operators to model their
+  /// instruction sets as much as possible, and only use target-dependent
+  /// operators when they have special requirements.
+  ///
+  /// Finally, during and after selection proper, SNodes may use special
+  /// operator codes that correspond directly with MachineInstr opcodes. These
+  /// are used to represent selected instructions. See the isMachineOpcode()
+  /// and getMachineOpcode() member functions of SDNode.
+  ///
+  enum NodeType {
+    /// DELETED_NODE - This is an illegal value that is used to catch
+    /// errors.  This opcode is not a legal opcode for any node.
+    DELETED_NODE,
+
+    /// EntryToken - This is the marker used to indicate the start of a region.
+    EntryToken,
+...
+```
+SelectionDAG/SelectionDAGDumper.cpp
+```
+33 std::string SDNode::getOperationName(const SelectionDAG *G)
+```
+这里函数包括了ISD::枚举类型对应的dump名称
 
