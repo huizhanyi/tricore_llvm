@@ -675,9 +675,14 @@ https://csstormq.github.io/blog/LLVM%20%E4%B9%8B%E5%90%8E%E7%AB%AF%E7%AF%87%EF%B
 
 https://csstormq.github.io/blog/LLVM%20%E4%B9%8B%E5%90%8E%E7%AB%AF%E7%AF%87%EF%BC%884%EF%BC%89%EF%BC%9A%E7%90%86%E8%A7%A3%E6%8C%87%E4%BB%A4%E9%80%89%E6%8B%A9%E7%9A%84%20dump%20%E8%BE%93%E5%87%BA
 
+TriCoreTargetLowering在SubTarget初始化时生成,而TriCoreDAGToDAGISel包含了TriCoreSubtarget
+```
+89 class TriCoreDAGToDAGISel : public SelectionDAGISel {
+90         const TriCoreSubtarget &Subtarget;
+```
 ```
 43 class SelectionDAGISel : public MachineFunctionPass {
-遍的入口方法
+遍的入口方法，该方法完成了所有的该遍任务
 68   bool runOnMachineFunction(MachineFunction &MF) override;
 ```
 SelectionDAGISel.cpp
