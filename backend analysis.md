@@ -610,10 +610,62 @@ t0: ch = EntryToken
 
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/45111af4-84fe-4258-be27-622d6ee95c53)
 输出一个常数4
-
+```
+SelectionDAGNodes.h
+1494 class ConstantSDNode : public SDNode {
+1495   const ConstantInt *Value;
+1496   friend class SelectionDAG;
+1497   ConstantSDNode(bool isTarget, bool isOpaque, const ConstantInt *val,
+1498                  DebugLoc DL, EVT VT)
+1499     : SDNode(isTarget ? ISD::TargetConstant : ISD::Constant,
+1500              0, DL, getSDVTList(VT)), Value(val) {
+1501     SubclassData |= (uint16_t)isOpaque;
+1502   }
+1503 public:
+1504
+1505   const ConstantInt *getConstantIntValue() const { return Value; }
+1506   const APInt &getAPIntValue() const { return Value->getValue(); }
+1507   uint64_t getZExtValue() const { return Value->getZExtValue(); }
+1508   int64_t getSExtValue() const { return Value->getSExtValue(); }
+1509
+1510   bool isOne() const { return Value->isOne(); }
+1511   bool isNullValue() const { return Value->isNullValue(); }
+1512   bool isAllOnesValue() const { return Value->isAllOnesValue(); }
+1513
+1514   bool isOpaque() const { return SubclassData & 1; }
+1515
+1516   static bool classof(const SDNode *N) {
+1517     return N->getOpcode() == ISD::Constant ||
+1518            N->getOpcode() == ISD::TargetConstant;
+1519   }
+1520 };
+```
 #### FrameIndex类型
 代表一个帧索引，例如
 
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/71cee821-0bd3-4587-b1cf-272087a7d7e8)
 这里代表帧索引为0，输出i32类型，似乎是一个地址。
+```
+SelectionDAGNodes.h
+1595 class FrameIndexSDNode : public SDNode {
+1596   int FI;
+1597   friend class SelectionDAG;
+1598   FrameIndexSDNode(int fi, EVT VT, bool isTarg)
+1599     : SDNode(isTarg ? ISD::TargetFrameIndex : ISD::FrameIndex,
+1600       0, DebugLoc(), getSDVTList(VT)), FI(fi) {
+1601   }
+1602 public:
+1603
+1604   int getIndex() const { return FI; }
+1605
+1606   static bool classof(const SDNode *N) {
+1607     return N->getOpcode() == ISD::FrameIndex ||
+1608            N->getOpcode() == ISD::TargetFrameIndex;
+1609   }
+1610 };
+```
+#### 其他介绍
+参考：
+LLVM 之后端篇（4）：理解指令选择的 dump 输出
+https://csstormq.github.io/blog/LLVM%20%E4%B9%8B%E5%90%8E%E7%AB%AF%E7%AF%87%EF%BC%884%EF%BC%89%EF%BC%9A%E7%90%86%E8%A7%A3%E6%8C%87%E4%BB%A4%E9%80%89%E6%8B%A9%E7%9A%84%20dump%20%E8%BE%93%E5%87%BA
 
