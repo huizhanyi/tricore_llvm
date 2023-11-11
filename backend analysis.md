@@ -670,7 +670,7 @@ LLVM 之后端篇（4）：理解指令选择的 dump 输出
 https://csstormq.github.io/blog/LLVM%20%E4%B9%8B%E5%90%8E%E7%AB%AF%E7%AF%87%EF%BC%884%EF%BC%89%EF%BC%9A%E7%90%86%E8%A7%A3%E6%8C%87%E4%BB%A4%E9%80%89%E6%8B%A9%E7%9A%84%20dump%20%E8%BE%93%E5%87%BA
 
 #### 第一个 LLVM IR -> SelectionDAG pass
-对应的上述所有操作都位于遍TriCoreDAGToDAGISel,参考
+对应的上述所有操作（下图）都位于遍TriCoreDAGToDAGISel,参考
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/a46c7a1c-8366-4e73-bbd6-dfb7b059ae8d)
 
 https://csstormq.github.io/blog/LLVM%20%E4%B9%8B%E5%90%8E%E7%AB%AF%E7%AF%87%EF%BC%884%EF%BC%89%EF%BC%9A%E7%90%86%E8%A7%A3%E6%8C%87%E4%BB%A4%E9%80%89%E6%8B%A9%E7%9A%84%20dump%20%E8%BE%93%E5%87%BA
