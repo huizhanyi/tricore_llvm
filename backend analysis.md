@@ -755,3 +755,33 @@ TriCoreISelLowering.cpp
 116 }
 ```
 需要特殊处理的操作入口函数，看外部的代码，LowerOperation主要在合法化阶段调用？
+检查一下LowerGlobalAddress的实现
+```
+366 SDValue TriCoreTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG& DAG) const
+367 {
+368
+返回Op代表的操作结果操作数的值类型
+369   EVT VT = Op.getValueType();
+370
+返回Op代表的操作（GlobalAddressSDNode）的节点
+371         GlobalAddressSDNode *GlobalAddr = cast<GlobalAddressSDNode>(Op.getNode());
+返回offset值
+372         int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
+取到目标地址，这是一个SDValue
+373         SDValue TargetAddr =
+374                  DAG.getTargetGlobalAddress(GlobalAddr->getGlobal(), Op, MVT::i32, Offset);
+返回一个TriCoreISD::Wrapper类型节点
+375         return DAG.getNode(TriCoreISD::Wrapper, Op, VT, TargetAddr);
+376
+377 }
+```
+再看看shift操作
+```
+110   case ISD::SHL:
+111   case ISD::SRL:
+112   case ISD::SRA:                return LowerShifts(Op, DAG);
+```
+```
+118 SDValue TriCoreTargetLowering::LowerShifts(SDValue Op,
+119                 SelectionDAG &DAG) const {
+```
