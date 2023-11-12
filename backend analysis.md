@@ -1013,3 +1013,14 @@ let usesCustomInserter = 1 in {
 442   return BB;
 443 }
 ```
+TriCoreISelLowering.cpp
+```
+449 #include "TriCoreGenCallingConv.inc"
+```
+这里包含了很少的内容，包括CC_TriCore和RetCC_TriCore两个函数。
+```
+451 /// TriCore call implementation
+452 SDValue TriCoreTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
+453                                      SmallVectorImpl<SDValue> &InVals) const {
+```
+
