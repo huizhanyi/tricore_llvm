@@ -827,13 +827,24 @@ shift值为常数
 ```
 处理ISD::BR_CC类型
 ```
+/// BR_CC - Conditional branch.  The behavior is like that of SELECT_CC, in
+/// that the condition is represented as condition code, and two nodes to
+/// compare, rather than as a combined SetCC node.  The operands in order
+/// are chain, cc, lhs, rhs, block to branch to if condition is true.
+BR_CC,
+```
+
+```
 314 SDValue TriCoreTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
 对应节点的操作数0
 315   SDValue Chain = Op.getOperand(0);
 对应节点的操作数1，为条件节点，取条件码
 316   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
+左操作数
 317   SDValue LHS   = Op.getOperand(2);
+右操作数
 318   SDValue RHS   = Op.getOperand(3);
+目标块
 319   SDValue Dest  = Op.getOperand(4);
 320   SDLoc dl  (Op);
 321
@@ -842,8 +853,11 @@ shift值为常数
 324
 325   //Flag.getValue(1).dump();
 326
+替换为TriCore具体的ISD操作
 327   return DAG.getNode(TriCoreISD::BR_CC, dl, Op.getValueType(),
 328                        Chain, Dest, Flag.getValue(0), tricoreCC, Flag.getValue(1));
 329
 330 }
 ```
+从这里看，有一系列TriCore具体的ISD类型被插入到DAG中。
+
