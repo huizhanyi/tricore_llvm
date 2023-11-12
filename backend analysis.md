@@ -825,3 +825,23 @@ shift值为常数
 ...
 155         }
 ```
+处理ISD::BR_CC类型
+```
+314 SDValue TriCoreTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
+315   SDValue Chain = Op.getOperand(0);
+316   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
+317   SDValue LHS   = Op.getOperand(2);
+318   SDValue RHS   = Op.getOperand(3);
+319   SDValue Dest  = Op.getOperand(4);
+320   SDLoc dl  (Op);
+321
+322   SDValue tricoreCC;
+323   SDValue Flag = EmitCMP(LHS, RHS, CC, dl, DAG, tricoreCC);
+324
+325   //Flag.getValue(1).dump();
+326
+327   return DAG.getNode(TriCoreISD::BR_CC, dl, Op.getValueType(),
+328                        Chain, Dest, Flag.getValue(0), tricoreCC, Flag.getValue(1));
+329
+330 }
+```
