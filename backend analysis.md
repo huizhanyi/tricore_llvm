@@ -828,7 +828,9 @@ shift值为常数
 处理ISD::BR_CC类型
 ```
 314 SDValue TriCoreTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
+对应节点的操作数0
 315   SDValue Chain = Op.getOperand(0);
+对应节点的操作数1，为条件节点，取条件码
 316   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
 317   SDValue LHS   = Op.getOperand(2);
 318   SDValue RHS   = Op.getOperand(3);
