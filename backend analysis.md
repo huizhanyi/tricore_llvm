@@ -1008,7 +1008,7 @@ let usesCustomInserter = 1 in {
 440
 完成处理后，Select8指令即被删除，因此这个函数应该是在比较后面的遍里调用的？
 使用-print-before-all和-print-after-all，可以看到 Expand ISel Pseudo-instructions遍之前存在Select8指令，之后
-则不存在，因此应该是在该遍调用的。
+则不存在，因此应该是在该遍调用的。确认ExpandISelPseudos.cpp:ExpandISelPseudos::runOnMachineFunction调用了该函数
 441   MI->eraseFromParent();   // The pseudo instruction is gone now.
 442   return BB;
 443 }
