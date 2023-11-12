@@ -784,4 +784,14 @@ TriCoreISelLowering.cpp
 ```
 118 SDValue TriCoreTargetLowering::LowerShifts(SDValue Op,
 119                 SelectionDAG &DAG) const {
+Op对应的Node的操作码
+120         unsigned Opc = Op.getOpcode();
+Op对应的Node
+121         SDNode* N = Op.getNode();
+取shift值，这里对应1号操作数，0号应该是被迁移的操作数
+122         SDValue shiftValue =  N->getOperand(1);
+123
+Op的值类型
+124         EVT VT = Op.getValueType();
+125         SDLoc dl(N);
 ```
