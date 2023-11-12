@@ -794,4 +794,34 @@ Op对应的Node
 Op的值类型
 124         EVT VT = Op.getValueType();
 125         SDLoc dl(N);
+127         switch (Opc) {
+129         case ISD::SHL:
+直接替换为TriCoreISD::SH，这里操作数、类型等都不变
+130                 return DAG.getNode(TriCoreISD::SH, dl, VT, N->getOperand(0), N->getOperand(1));
+
+131         case ISD::SRL:
+132         case ISD::SRA:
+133                 if(isa<ConstantSDNode>(shiftValue)) {
+shift值为常数
+134                         //outs() <<"shift constant\n";
+取shift常量值
+135                         int64_t shiftSVal = cast<ConstantSDNode>(shiftValue)->getSExtValue();
+
+136                         assert((shiftSVal>=-32 && shiftSVal<32) &&
+137                                                         "Shift can only be between -32 and +31");
+取shift SD节点
+138                         ConstantSDNode *shiftSD = cast<ConstantSDNode>(N->getOperand(1));
+对shift值取反
+139                         uint64_t shiftVal = -shiftSD->getZExtValue();
+生成一个新的constant SD节点
+140                         SDValue negShift = DAG.getConstant(shiftVal, dl, MVT::i32);
+141
+如果是ISD::SRL，则使用TriCore的SH操作，否则使用SHA操作
+142                         unsigned Opcode = (Opc== ISD::SRL) ? TriCoreISD::SH : TriCoreISD::SHA;
+143
+生成新的SDNode，返回SDValue
+144                         return DAG.getNode(Opcode, dl, VT, N->getOperand(0), negShift);
+145                 }
+...
+155         }
 ```
