@@ -861,3 +861,62 @@ BR_CC,
 ```
 从这里看，有一系列TriCore具体的ISD类型被插入到DAG中。
 
+```
+348 SDValue TriCoreTargetLowering::LowerSELECT_CC(SDValue Op,
+349                                              SelectionDAG &DAG) const {
+350   SDValue LHS    = Op.getOperand(0);
+351   SDValue RHS    = Op.getOperand(1);
+352   SDValue TrueV  = Op.getOperand(2);
+353   SDValue FalseV = Op.getOperand(3);
+354   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
+355   SDLoc dl   (Op);
+356
+357   SDValue tricoreCC;
+358   SDValue Flag = EmitCMP(LHS, RHS, CC, dl, DAG, tricoreCC);
+359
+360   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+361   SDValue Ops[] = {TrueV, FalseV, tricoreCC, Flag};
+362
+363   return DAG.getNode(TriCoreISD::SELECT_CC, dl, VTs, Ops);
+364 }
+```
+使用如下命令研究节点替换的时机：
+llc -debug-only=isel -march=tricore -relocation-model=pic -filetype=asm test1.ll -o test.s
+可以看到Legalized selection DAG阶段完成了对ISD::SELECT_CC的替换，替换为TriCoreISD::CMP和TriCoreISD::SELECT_CC
+经过指令选择阶段后进一步被替换为TriCore支持的指令。如下所示
+```
+        0x56032b845a90: <multiple use>
+        0x56032b845bc0: i32 = Constant<0> [ID=-3]
+
+        0x56032b845f50: i32 = Constant<-3> [ID=-3]
+
+        0x56032b846080: i32 = Constant<-2> [ID=-3]
+
+        0x56032b845cf0: ch = seteq [ID=-3]
+
+      0x56032b8467a0: i32 = select_cc 0x56032b845a90, 0x56032b845bc0, 0x56032b845f50, 0x56032b846080, 0x56032b845cf0 [ORD=3] [ID=-3]
+```
+转换到
+```
+        0x56032b845f50: i32 = Constant<-3> [ID=4]
+
+        0x56032b846080: i32 = Constant<-2> [ID=5]
+
+        0x56032b845e20: i32 = Constant<1>
+
+          0x56032b845a90: <multiple use>
+          0x56032b845bc0: <multiple use>
+          0x56032b845bc0: <multiple use>
+        0x56032b8461b0: i32,glue = TriCoreISD::CMP 0x56032b845a90, 0x56032b845bc0, 0x56032b845bc0 [ORD=3]
+
+      0x56032b848090: i32,glue = TriCoreISD::SELECT_CC 0x56032b845f50, 0x56032b846080, 0x56032b845e20, 0x56032b8461b0 [ORD=3]
+```
+转换到
+```
+          0x56032b845a90: <multiple use>
+          0x56032b845e20: <multiple use>
+        0x56032b8461b0: i32,glue = EQrc 0x56032b845a90, 0x56032b845e20 [ORD=3]
+
+      0x56032b848090: i32 = Select8 0x56032b8482f0, 0x56032b8481c0, 0x56032b845cf0, 0x56032b8461b0 [ORD=3]
+```
+
