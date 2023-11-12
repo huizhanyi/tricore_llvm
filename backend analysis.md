@@ -944,11 +944,15 @@ let usesCustomInserter = 1 in {
 380 MachineBasicBlock*
 381 TriCoreTargetLowering::EmitInstrWithCustomInserter(MachineInstr *MI,
 382                                                   MachineBasicBlock *BB) const {
+取指令操作码
 383   unsigned Opc = MI->getOpcode();
 384
+取TargetInstrInfo
 385   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+取调试信息
 386   DebugLoc dl = MI->getDebugLoc();
 387
+处理TriCore::Select8指令类型，这里只需要处理这种指令类型。ISD类型TriCoreselectcc生成了Select8指令。Instruction selection结束就会生成Select8类型指令
 388   assert(Opc == TriCore::Select8 && "Unexpected instr type to insert");
 389   // To "insert" a SELECT instruction, we actually have to insert the diamond
 390   // control-flow pattern.  The incoming instruction knows the destination vreg
@@ -1002,6 +1006,9 @@ let usesCustomInserter = 1 in {
 438     .addReg(MI->getOperand(2).getReg()).addMBB(copy0MBB)
 439     .addReg(MI->getOperand(1).getReg()).addMBB(thisMBB);
 440
+完成处理后，Select8指令即被删除，因此这个函数应该是在比较后面的遍里调用的？
+使用-print-before-all和-print-after-all，可以看到 Expand ISel Pseudo-instructions遍之前存在Select8指令，之后
+则不存在，因此应该是在该遍调用的。
 441   MI->eraseFromParent();   // The pseudo instruction is gone now.
 442   return BB;
 443 }
