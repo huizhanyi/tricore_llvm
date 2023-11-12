@@ -689,3 +689,69 @@ SelectionDAGISel.cpp
 ```
  415 bool SelectionDAGISel::runOnMachineFunction(MachineFunction &mf) {
 ```
+#### TriCoreTargetLowering
+TriCoreISelLowering.h
+TriCore定制的Selection DAG类型
+```
+28 namespace TriCoreISD {
+29 enum NodeType {
+30   // Start the numbering where the builtin ops and target ops leave off.
+31   FIRST_NUMBER = ISD::BUILTIN_OP_END,
+32   RET_FLAG,
+33   // This loads the symbol (e.g. global address) into a register.
+34   LOAD_SYM,
+35   // This loads a 32-bit immediate into a register.
+36   MOVEi32,
+37   CALL,
+38         // TriCore has a different way of lowering branch conditions.
+39         BR_CC,
+40         // This loads the comparison type, as Tricore doesn't support all
+41         // sorts of comparisons, some have to be created.
+42         CMP,
+43         // This load the addressing information
+44         Wrapper,
+45         // This loads the Shift instructions operands. Right and left shift
+46         // depends on the signed-ness on the shift value. A negytive value is
+47         // a right shift, and vice versa.
+48         SH,
+49         // Arthimatic Shift
+50         SHA,
+51         // Loads ternary operators
+52         SELECT_CC,
+53         LOGICCMP,
+54         IMASK,
+55         EXTR
+56         };
+57 }
+```
+重载父类一系列虚函数
+```
+ 62 class TriCoreTargetLowering : public TargetLowering {
+ 63 public:
+ 64   explicit TriCoreTargetLowering(TriCoreTargetMachine &TM);
+ 65
+ 66   /// LowerOperation - Provide custom lowering hooks for some operations.
+ 67   virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const;
+ 68
+ 69   /// getTargetNodeName - This method returns the name of a target specific
+ 70   //  DAG node.
+ 71   virtual const char *getTargetNodeName(unsigned Opcode) const;
+```
+TriCoreISelLowering.cpp
+```
+103 SDValue TriCoreTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
+104         switch (Op.getOpcode()) {
+105   default:                                                                  llvm_unreachable("Unimplemented operand");
+106   case ISD::GlobalAddress:      return LowerGlobalAddress(Op, DAG);
+107   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
+108   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
+109   case ISD::SETCC:              return LowerSETCC(Op, DAG);
+110   case ISD::SHL:
+111   case ISD::SRL:
+112   case ISD::SRA:                return LowerShifts(Op, DAG);
+113   //case ISD::SIGN_EXTEND:              return LowerSIGN_EXTEND(Op, DAG);
+114   //case ISD::SIGN_EXTEND_INREG:  return LowerSIGN_EXTEND_INREG(Op, DAG);
+115   }
+116 }
+```
+需要特殊处理的操作入口函数，看外部的代码，LowerOperation主要在合法化阶段调用？
