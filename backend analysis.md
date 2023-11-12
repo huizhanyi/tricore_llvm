@@ -919,4 +919,90 @@ llc -debug-only=isel -march=tricore -relocation-model=pic -filetype=asm test1.ll
 
       0x56032b848090: i32 = Select8 0x56032b8482f0, 0x56032b8481c0, 0x56032b845cf0, 0x56032b8461b0 [ORD=3]
 ```
-
+```
+  /// This method should be implemented by targets that mark instructions with
+  /// the 'usesCustomInserter' flag.  These instructions are special in various
+  /// ways, which require special support to insert.  The specified MachineInstr
+  /// is created but not inserted into any basic blocks, and this method is
+  /// called to expand it into a sequence of instructions, potentially also
+  /// creating new basic blocks and control flow.
+  /// As long as the returned basic block is different (i.e., we created a new
+  /// one), the custom inserter is free to modify the rest of \p MBB.
+  virtual MachineBasicBlock *
+    EmitInstrWithCustomInserter(MachineInstr *MI, MachineBasicBlock *MBB) const;
+```
+Select8用到了usesCustomInserter=1
+```
+let usesCustomInserter = 1 in {
+  def Select8  : Pseudo<(outs DataRegs:$dst),
+                (ins DataRegs:$src, DataRegs:$src2, i32imm:$cc, DataRegs:$src1 ),
+                 "# Select8 PSEUDO",
+                 [(set DataRegs:$dst, (TriCoreselectcc DataRegs:$src, DataRegs:$src2, imm:$cc, DataRegs:$src1))]>;
+}
+```
+```
+380 MachineBasicBlock*
+381 TriCoreTargetLowering::EmitInstrWithCustomInserter(MachineInstr *MI,
+382                                                   MachineBasicBlock *BB) const {
+383   unsigned Opc = MI->getOpcode();
+384
+385   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+386   DebugLoc dl = MI->getDebugLoc();
+387
+388   assert(Opc == TriCore::Select8 && "Unexpected instr type to insert");
+389   // To "insert" a SELECT instruction, we actually have to insert the diamond
+390   // control-flow pattern.  The incoming instruction knows the destination vreg
+391   // to set, the condition code register to branch on, the true/false values to
+392   // select between, and a branch opcode to use.
+393   const BasicBlock *LLVM_BB = BB->getBasicBlock();
+394   MachineFunction::iterator I = BB;
+395   ++I;
+396
+397   //  thisMBB:
+398   //  ...
+399   //   TrueVal = ...
+400   //   cmpTY ccX, r1, r2
+401   //   jCC copy1MBB
+402   //   fallthrough --> copy0MBB
+403   MachineBasicBlock *thisMBB = BB;
+404   MachineFunction *F = BB->getParent();
+405   MachineBasicBlock *copy0MBB = F->CreateMachineBasicBlock(LLVM_BB);
+406   MachineBasicBlock *copy1MBB = F->CreateMachineBasicBlock(LLVM_BB);
+407   F->insert(I, copy0MBB);
+408   F->insert(I, copy1MBB);
+409   // Update machine-CFG edges by transferring all successors of the current
+410   // block to the new block which will contain the Phi node for the select.
+411   copy1MBB->splice(copy1MBB->begin(), BB,
+412                    std::next(MachineBasicBlock::iterator(MI)), BB->end());
+413   copy1MBB->transferSuccessorsAndUpdatePHIs(BB);
+414   // Next, add the true and fallthrough blocks as its successors.
+415   BB->addSuccessor(copy0MBB);
+416   BB->addSuccessor(copy1MBB);
+417
+418   //MI->dump();
+419
+420   BuildMI(BB, dl, TII.get(TriCore::JNZsbr))
+421     .addMBB(copy1MBB)
+422         .addReg(MI->getOperand(4).getReg());
+423
+424   //  copy0MBB:
+425   //   %FalseValue = ...
+426   //   # fallthrough to copy1MBB
+427   BB = copy0MBB;
+428
+429   // Update machine-CFG edges
+430   BB->addSuccessor(copy1MBB);
+431
+432   //  copy1MBB:
+433   //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
+434   //  ...
+435   BB = copy1MBB;
+436   BuildMI(*BB, BB->begin(), dl, TII.get(TriCore::PHI),
+437           MI->getOperand(0).getReg())
+438     .addReg(MI->getOperand(2).getReg()).addMBB(copy0MBB)
+439     .addReg(MI->getOperand(1).getReg()).addMBB(thisMBB);
+440
+441   MI->eraseFromParent();   // The pseudo instruction is gone now.
+442   return BB;
+443 }
+```
