@@ -1013,7 +1013,7 @@ let usesCustomInserter = 1 in {
 442   return BB;
 443 }
 ```
-##### Calling convention
+#### Calling convention
 TriCoreISelLowering.cpp
 ```
 449 #include "TriCoreGenCallingConv.inc"
