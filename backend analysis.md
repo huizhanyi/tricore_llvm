@@ -1104,9 +1104,16 @@ private:
 715                 uint64_t size = 4;
 716                 if (VA.getValVT() == MVT::i64)
 717                         size = 8;
-
+返回负值索引。
 719                 const int FI = MF.getFrameInfo()->CreateFixedObject(size, Offset, true);
 720                 EVT PtrTy = getPointerTy(DAG.getDataLayout());
+生成帧索引DAG节点
 721                 SDValue FIPtr = DAG.getFrameIndex(FI, PtrTy);
+生成一个加载操作，从帧中加载数据
+726                 //create a load node for the created frame object
+727                 SDValue Load = DAG.getLoad(VA.getValVT(), dl, Chain, FIPtr,
+728                                 MachinePointerInfo(), false, false, false, 0);
+保存生成的DAG节点
+730                 InVals.push_back(Load);
 ```
 
