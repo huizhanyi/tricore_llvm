@@ -1032,4 +1032,81 @@ TriCoreISelLowering.cpp
 620                 const SmallVectorImpl<ISD::InputArg> &Ins, SDLoc dl, SelectionDAG &DAG,
 621                 SmallVectorImpl<SDValue> &InVals) const {
 ```
+该函数在SelectionDAGBuilder.cpp/SelectionDAGISel::LowerArguments被调用
+```
+  SDValue NewRoot = TLI->LowerFormalArguments(
+      DAG.getRoot(), F.getCallingConv(), F.isVarArg(), Ins, dl, DAG, InVals);
+```
+```
+622         MachineFunction &MF = DAG.getMachineFunction();
+取当前MachineFunction函数
+623         MachineRegisterInfo &RegInfo = MF.getRegInfo();
+取寄存器信息
+627         // Assign locations to all of the incoming arguments.
+所有入参指派操作放这里。CCValAssign（CodeGen/CallingConvLower.h）代表参数或者返回值到位置的指派。
+628         SmallVector<CCValAssign, 16> ArgLocs;
+630         //get incoming arguments information
+631         CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
+632                         *DAG.getContext());
+```
+CCState定义
+```
+CodeGen/CallingConvLower.h
+/// CCState - This class holds information needed while lowering arguments and
+/// return values.  It captures which registers are already assigned and which
+/// stack slots are used.  It provides accessors to allocate these values.
+class CCState {
+private:
+  CallingConv::ID CallingConv;
+```
+调用td文件生成的函数CC_TriCore
+```
+637         CCInfo.AnalyzeFormalArguments(Ins, CC_TriCore);
+```
+```
+645                 VA = ArgLocs[i];
+646
+647                 SDValue ArgIn;
+648                 unsigned AddrReg;
+当前函数参数是不是指针类型
+649                 if (TCCH.isRegValPtrType(MF)) {
+650                         //Is there any address register available?
+取使用寄存器传递的下一个寄存器，这里是TriCore::A4~TriCore::A7
+651                         AddrReg = TCCH.getNextAddrRegs(funName);
+如果找到了寄存器，调用convertToReg，保存了寄存器编号，并且记录为非内存位置
+652                         if (AddrReg != UNKNOWN_REG)
+653                                 VA.convertToReg(AddrReg);
+654                   }
+如果对应的参数可以使用寄存器传递。
+666                 if (VA.isRegLoc()) {
+如果是指针类型，生成AddrRegsClass虚寄存器
+675                         // If the argument is a pointer type then create a AddrRegsClass
+676                         // Virtual register.
+677                         if (TCCH.isRegValPtrType(MF)) {
+678                                 VA.setValVT(MVT(MVT::iPTR));
+生成虚寄存器
+679                                 VReg = RegInfo.createVirtualRegister(&TriCore::AddrRegsRegClass);
+标记寄存器在使用，前面的是物理寄存器编号，后面的是虚寄存器编号
+680                                 RegInfo.addLiveIn(VA.getLocReg(), VReg); //mark the register is inuse
+记录寄存器已经被使用
+681                                 TCCH.saveRegRecord(funName, VA.getLocReg(), true);
+682                                 TCCH++;
+生成CopyFromReg DAG节点。
+683                                 ArgIn = DAG.getCopyFromReg(Chain, dl, VReg, RegVT, MVT::iPTR);
+684                         }
+记录DAG节点。
+702                         InVals.push_back(ArgIn);
+如果不能使用寄存器
+711                 const unsigned Offset = VA.getLocMemOffset();
+生成栈偏移，用于放输入参数。
+713                 // create stack offset it the input argument is placed in memory
+714
+715                 uint64_t size = 4;
+716                 if (VA.getValVT() == MVT::i64)
+717                         size = 8;
+
+719                 const int FI = MF.getFrameInfo()->CreateFixedObject(size, Offset, true);
+720                 EVT PtrTy = getPointerTy(DAG.getDataLayout());
+721                 SDValue FIPtr = DAG.getFrameIndex(FI, PtrTy);
+```
 
