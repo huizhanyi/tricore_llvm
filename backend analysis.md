@@ -1020,8 +1020,16 @@ TriCoreISelLowering.cpp
 ```
 这里包含了很少的内容，包括CC_TriCore和RetCC_TriCore两个函数。
 ```
-451 /// TriCore call implementation
-452 SDValue TriCoreTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
-453                                      SmallVectorImpl<SDValue> &InVals) const {
+611 //===----------------------------------------------------------------------===//
+612 //             Formal Arguments Calling Convention Implementation
+613 //===----------------------------------------------------------------------===//
+614
+615 /// TriCore formal arguments implementation
+616
+617 //Called when function in entered
+618 SDValue TriCoreTargetLowering::LowerFormalArguments(SDValue Chain,
+619                 CallingConv::ID CallConv, bool isVarArg,
+620                 const SmallVectorImpl<ISD::InputArg> &Ins, SDLoc dl, SelectionDAG &DAG,
+621                 SmallVectorImpl<SDValue> &InVals) const {
 ```
 
