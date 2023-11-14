@@ -1116,4 +1116,26 @@ private:
 保存生成的DAG节点
 730                 InVals.push_back(Load);
 ```
+处理函数返回
+```
+758 SDValue
+759 TriCoreTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
+760                                bool isVarArg,
+761                                const SmallVectorImpl<ISD::OutputArg> &Outs,
+762                                const SmallVectorImpl<SDValue> &OutVals,
+763                                SDLoc dl, SelectionDAG &DAG) const {
+类似lowerFormalArguments
+770   SmallVector<CCValAssign, 16> RVLocs;
+取返回类型
+772   Type* t= DAG.getMachineFunction().getFunction()->getReturnType();
+分析返回值
+778   CCInfo.AnalyzeReturn(Outs, RetCC_TriCore);
+最后生成TriCoreISD::RET_FLAG DAG节点类型
+806   return DAG.getNode(TriCoreISD::RET_FLAG, dl, MVT::Other, RetOps);
+```
+函数调用前后处理
+```
+452 SDValue TriCoreTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
+453                                      SmallVectorImpl<SDValue> &InVals) const {
+```
 
