@@ -1137,5 +1137,94 @@ private:
 ```
 452 SDValue TriCoreTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 453                                      SmallVectorImpl<SDValue> &InVals) const {
+
+454   SelectionDAG &DAG = CLI.DAG;
+455   SDLoc &Loc = CLI.DL;
+456   SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+457   SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+458   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+459   SDValue Chain = CLI.Chain;
+460   SDValue Callee = CLI.Callee;
+461   CallingConv::ID CallConv = CLI.CallConv;
+462   const bool isVarArg = CLI.IsVarArg;
+463
+464
+465   CLI.IsTailCall = false;
+这里看，入参CLI实际上保存了一系列call相关的参数
+476   CCInfo.AnalyzeCallOperands(Outs, CC_TriCore);
+根据用户的调用传统函数，确定相关调用参数信息
+478     // Get the size of the outgoing arguments stack space requirement.
+479   const unsigned NumBytes = CCInfo.getNextStackOffset();
+确定输出参数栈空间大小需求
+481   Chain =
+482       DAG.getCALLSEQ_START(Chain, DAG.getIntPtrConstant(NumBytes, Loc, true),
+483                            Loc);
+生成ISD::CALLSEQ_START节点，一个对外依赖是Chain，还有一个是参数栈空间的常量
+488   // We only support calling global addresses.
+489         GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee);
+490         assert(G && "We only support the calling of global addresses");
+491         Callee = DAG.getTargetGlobalAddress(G->getGlobal(), Loc, MVT::i32);
+Callee函数的引用
+507     if (VA.isRegLoc()) {
+508         RegsToPass.push_back(
+509                                         std::make_pair(VA.getLocReg(), Arg));
+记录寄存器传递参数
+517     SDValue StackPtr = DAG.getRegister(TriCore::A10, MVT::i32);
+518     SDValue PtrOff = DAG.getIntPtrConstant(VA.getLocMemOffset(), Loc);
+519     PtrOff = DAG.getNode(ISD::ADD, Loc, MVT::i32, StackPtr, PtrOff);
+520     MemOpChains.push_back(DAG.getStore(Chain, Loc, Arg, PtrOff,
+521                                        MachinePointerInfo(), false, false, 0));
+栈方式需要增加的处理，根据调试，通过栈保存数据。
+
+524   // Emit all stores, make sure they occur before the call.
+525   if (!MemOpChains.empty()) {
+526     Chain = DAG.getNode(ISD::TokenFactor, Loc, MVT::Other, MemOpChains);
+527   }
+这里生成ISD::TokenFactor类型节点，似乎也没有这样类型的节点。可能后续做了一些处理。
+
+537   std::vector<SDValue> Ops;
+538   Ops.push_back(Chain);
+539   Ops.push_back(Callee);
+Callee参数，这里代表函数的全局变量地址
+
+541   // Add argument registers to the end of the list so that they are known live
+542   // into the call.
+543   for (auto &Reg : RegsToPass) {
+544     Ops.push_back(DAG.getRegister(Reg.first, Reg.second.getValueType()));
+545   }
+通过寄存器传递的参数，似乎没看出有通过寄存器传递的参数。确实好像没有通过寄存器传递数据。
+
+547   // Add a register mask operand representing the call-preserved registers
+548   const uint32_t *Mask;
+549   const TargetRegisterInfo *TRI = DAG.getSubtarget().getRegisterInfo();
+550   Mask = TRI->getCallPreservedMask(DAG.getMachineFunction(), CallConv);
+551
+552   assert(Mask && "Missing call preserved mask for calling convention");
+553   Ops.push_back(DAG.getRegisterMask(Mask));
+554
+555                 if (InFlag.getNode()) {
+556                         Ops.push_back(InFlag);
+557                 }
+这里生成Call的一个寄存器掩码，表示调用保留的寄存器。
+
+561   // Returns a chain and a flag for retval copy to use.
+562   Chain = DAG.getNode(TriCoreISD::CALL, Loc, NodeTys, Ops);
+563   InFlag = Chain.getValue(1);
+生成TriCoreISD::CALL类型节点，输出结果类型为MVT::Other, MVT::Glue。
+565   Chain = DAG.getCALLSEQ_END(Chain, DAG.getIntPtrConstant(NumBytes, Loc, true),
+566                              DAG.getIntPtrConstant(0, Loc, true), InFlag, Loc);
+生成ISD::CALLSEQ_END节点。Chain来自TriCoreISD::CALL的第一个输出，第二个参数是输出参数的栈空间占用大小。第三个是一个常量值为0。第四个InFlag是TriCoreISD::CALL的第二个输出。
 ```
+从目前的实现看，D4~D7被设置成Callee-saved寄存器，这可能不能再用于参数传递？
+果然，将测试例子改成如下
+```
+define i64 @test(i64 %x) #0 {
+entry:
+  %call = tail call i64 @exfunc(i64 %x) #2
+  ret i64 %call
+}
+```
+因为这会使用E4 E6两个寄存器，而这两个别名没有放到Callee-saved里面，则使用了E4传递，看下图
+![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/3f5071e5-51f5-4cab-9784-2fab8771fc71)
+
 
