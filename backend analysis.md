@@ -1215,7 +1215,12 @@ Callee参数，这里代表函数的全局变量地址
 566                              DAG.getIntPtrConstant(0, Loc, true), InFlag, Loc);
 生成ISD::CALLSEQ_END节点。Chain来自TriCoreISD::CALL的第一个输出，第二个参数是输出参数的栈空间占用大小。第三个是一个常量值为0。第四个InFlag是TriCoreISD::CALL的第二个输出。
 ```
-从目前的实现看，D4~D7被设置成Callee-saved寄存器，这可能不能再用于参数传递？
+```
+def CC_Save : CalleeSavedRegs<(add A2, A3, A4, A5, A6, A7,
+                                  D0, D1, D2, D3, D4, D5, D6, D7,
+                                 A11)>;
+```
+从目前的实现看，D4~D7被设置成Callee-saved寄存器，被getCallPreservedMask函数定义为call preseved，这可能不能再用于参数传递？
 果然，将测试例子改成如下
 ```
 define i64 @test(i64 %x) #0 {
