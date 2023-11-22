@@ -1232,4 +1232,49 @@ entry:
 因为这会使用E4 E6两个寄存器，而这两个别名没有放到Callee-saved里面，则使用了E4传递，看下图
 ![image](https://github.com/huizhanyi/tricore_llvm/assets/57975578/3f5071e5-51f5-4cab-9784-2fab8771fc71)
 
+### 指令集定义
+TriCoreInstrInfo.td
+```
+def ADDrc : RC<0x8B, 0x00, (outs DataRegs:$d),
+                (ins DataRegs:$s1, i32imm:$const9),
+                "add $d, $s1, $const9",
+                [(set DataRegs:$d, (add DataRegs:$s1, immSExt9:$const9))]>;
+```
+这里对应Inst的位置都给与了复制，op1/op2都为确定值，而s1/d/const9则都还没有定义，这些在输入和输出中都有出现，pattern中也有出现，asmstring也有，不知道对应到那个？
+其中i32imm对应定义
+```
+let OperandType = "OPERAND_IMMEDIATE" in {
+...
+def i32imm : Operand<i32>;
+...
+}
+```
+DataRegs为RegisterClass
+immSExt9定义为
+```
+def immSExt9  : PatLeaf<(imm), [{ return isInt<9>(N->getSExtValue()); }]>;
+```
+PatLeaf是一个PatFrag，代表一个pattern fragment，可以用于匹配DAG上的内容。
+这里pattern用于完成模式的匹配，匹配完毕后，输入的const9被扩展到i32imm操作数和$s1完成加法操作，生成结果放到$d。
+
+根据RC定义
+```
+//===----------------------------------------------------------------------===//
+// 32-bit RC Instruction Format: <d|op2|const9|s1|op1>
+//===----------------------------------------------------------------------===//
+class RC<bits<8> op1, bits<7> op2, dag outs, dag ins, string asmstr,
+                  list<dag> pattern> : T32<outs, ins, asmstr, pattern> {
+
+  bits<4> s1;
+  bits<4> d;
+  bits<9> const9;
+
+  let Inst{7-0} = op1;
+  let Inst{11-8} = s1;
+  let Inst{20-12} = const9;
+  let Inst{27-21} = op2;
+  let Inst{31-28} = d;
+}
+```
+
 
