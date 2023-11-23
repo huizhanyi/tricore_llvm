@@ -1276,5 +1276,41 @@ class RC<bits<8> op1, bits<7> op2, dag outs, dag ins, string asmstr,
   let Inst{31-28} = d;
 }
 ```
+TriCoreInstrInfo.h
+```
+20 #define GET_INSTRINFO_HEADER
+21 #include "TriCoreGenInstrInfo.inc"
+```
+包含生成的头文件的部分信息，通过GET_INSTRINFO_HEADER获取
+TriCoreInstrInfo.cpp
+```
+31 #define GET_INSTRINFO_CTOR_DTOR
+32 #include "TriCoreGenInstrInfo.inc"
+```
+包含外部定义的变量信息
+```
+39 TriCoreInstrInfo::TriCoreInstrInfo()
+40   : TriCoreGenInstrInfo(TriCore::ADJCALLSTACKDOWN, TriCore::ADJCALLSTACKUP),
+41     RI() {
+42 }
+入口时Frame创建和销毁的指令操作码。
+并且继承的类TargetInstrInfo中包含了所有指令生成的信息。
+```
+```
+50 TriCoreInstrInfo::isLoadFromStackSlot(const MachineInstr *MI, int &FrameIndex)
+70 unsigned TriCoreInstrInfo::isStoreToStackSlot(const MachineInstr *MI,
+71                 int &FrameIndex) const {
+86 void TriCoreInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
+87                 MachineBasicBlock::iterator I, DebugLoc DL,
+88                 unsigned DestReg, unsigned SrcReg,
+89                 bool KillSrc) const {
+
+这里的函数操作的是MachineInstr类型中间表示形式。
+```
+```
+寄存器分配结束后，调用删除伪指令
+441 bool TriCoreInstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const
+```
+
 
 
