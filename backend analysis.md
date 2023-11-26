@@ -1311,6 +1311,92 @@ TriCoreInstrInfo.cpp
 寄存器分配结束后，调用删除伪指令
 441 bool TriCoreInstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const
 ```
+### Instruction Selector
+```
+class SelectionDAGISel : public MachineFunctionPass {
+```
+这里定义了一个指令选择遍，在这个遍完成LLVM IR到机器指令的转换。
+参考https://llvm.org/docs/CodeGenerator.html#instruction-selection
+```
+89 class TriCoreDAGToDAGISel : public SelectionDAGISel {
+90         const TriCoreSubtarget &Subtarget;
+一个节点选择的主入口函数
+97         SDNode *Select(SDNode *N);
+113 #include "TriCoreGenDAGISel.inc"
+自动生成的函数
+```
+```
+474 SDNode *TriCoreDAGToDAGISel::Select(SDNode *N) {
+482         switch (N->getOpcode()) {
+取SDNode操作码类型
+483         case ISD::Constant:
+这里看，已经转化为标准SDNode类型
+484                 return SelectConstant(N);
+```
+```
+341 SDNode *TriCoreDAGToDAGISel::SelectConstant(SDNode *N) {
+342          // Make sure the immediate size is supported.
+是ConstantSDNode类型
+343           ConstantSDNode *ConstVal = cast<ConstantSDNode>(N);
+344           uint64_t ImmVal = ConstVal->getZExtValue();
+345           int64_t ImmSVal = ConstVal->getSExtValue();
+
+419           // Select the low part of the immediate move.
+420                 uint64_t LoMask = 0xffff;
+421                 uint64_t HiMask = 0xffff0000;
+422                 uint64_t ImmLo = (ImmVal & LoMask);
+423                 int64_t ImmSLo = (ImmSVal & LoMask) - 65536;
+426                 uint64_t ImmHi = (ImmVal & HiMask);
+
+442           if ((ImmHi == 0) && ImmLo) {
+如果只有低16位有值。
+443                 if (ImmSVal >=0 && ImmSVal < 32768)
+正数且能被有符号数表示的立即数，使用TriCore::MOVrlc
+444                   return CurDAG->getMachineNode(TriCore::MOVrlc, N, MVT::i32, ConstSImm);
+可以使用无符号表示，使用TriCore::MOVUrlc指令
+445                 else if(ImmSVal >=32768 && ImmSVal < 65536)
+446                         return CurDAG->getMachineNode(TriCore::MOVUrlc, N, MVT::i32, ConstEImm);
+447
+448           }
+```
+```
+def MOVrlc  : MOV_CONST<0x3B,"mov", (ins s16imm:$const16) ,
+              [(set DataRegs:$d, immSExt16:$const16)]>;
+```
+FrameIndex特殊情况，
+```
+493         case ISD::FrameIndex: {
+494                 int FI = cast<FrameIndexSDNode>(N)->getIndex();
+495                 SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
+如果只有一个Use，那么使用
+498                 if (N->hasOneUse()) {
+499                         return CurDAG->SelectNodeTo(N, TriCore::ADDrc, MVT::i32, TFI,
+500                                         CurDAG->getTargetConstant(0, dl, MVT::i32));
+501                 }
+502                 return CurDAG->getMachineNode(TriCore::ADDrc, dl, MVT::i32, TFI,
+503                                 CurDAG->getTargetConstant(0, dl, MVT::i32));
+504         }
+非特殊情况，通过自动生成的代码处理。
+518         SDNode *ResNode = SelectCode(N);
+```
+TriCoreGenDAGISel.inc
+```
+13 SDNode *SelectCode(SDNode *N) {
+调用SelectCodeCommon实现
+1734   return SelectCodeCommon(N, MatcherTable,sizeof(MatcherTable));
+```
+lib/CodeGen/SelectionDAG/SelectionDAGISel.cpp
+```
+要匹配的节点NodeToMatch，返回匹配到的节点
+2554 SDNode *SelectionDAGISel::
+2555 SelectCodeCommon(SDNode *NodeToMatch, const unsigned char *MatcherTable,
+2556                  unsigned TableSize) {
+基于SDNode的操作码
+2558   switch (NodeToMatch->getOpcode()) {
+节点还没有被选择
+2596   assert(!NodeToMatch->isMachineOpcode() && "Node already selected!");
+```
+
 
 
 
