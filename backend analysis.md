@@ -1325,6 +1325,7 @@ class SelectionDAGISel : public MachineFunctionPass {
 113 #include "TriCoreGenDAGISel.inc"
 自动生成的函数
 ```
+主入口函数Select，这里先处理特殊情况，然后把常用情况转发给自动生成的SelectCode函数，进一步调用了SelectCodeCommon函数完成由公共SDNode到机器指令的替换。
 ```
 474 SDNode *TriCoreDAGToDAGISel::Select(SDNode *N) {
 482         switch (N->getOpcode()) {
