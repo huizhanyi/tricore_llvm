@@ -1317,6 +1317,7 @@ class SelectionDAGISel : public MachineFunctionPass {
 ```
 这里定义了一个指令选择遍，在这个遍完成LLVM IR到机器指令的转换。
 参考https://llvm.org/docs/CodeGenerator.html#instruction-selection
+指令选择器的输入和输出都是DAG。输入DAG代表LLVM指令，输出DAG代表目标机指令。通过模式匹配完成变换。
 ```
 89 class TriCoreDAGToDAGISel : public SelectionDAGISel {
 90         const TriCoreSubtarget &Subtarget;
