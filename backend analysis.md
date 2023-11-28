@@ -1398,6 +1398,13 @@ lib/CodeGen/SelectionDAG/SelectionDAGISel.cpp
 节点还没有被选择
 2596   assert(!NodeToMatch->isMachineOpcode() && "Node already selected!");
 ```
+### ExpandPostRA遍
+这个遍在寄存器分配后调用，用于处理Pseudo指令。
+通用处理遍会调用目标特定的函数处理Pseudo指令，这里定义的函数为
+```
+bool TriCoreInstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const
+```
+这里主要处理64 bit指令，因为TriCore不支持64位计算。
 
 
 
